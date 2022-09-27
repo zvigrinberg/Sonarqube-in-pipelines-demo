@@ -16,7 +16,7 @@ podman run -d --network=jenkins-sonarqube --name sonarqube -e SONAR_ES_BOOTSTRAP
 podman run -d -p 8080:8080 -p 50000:50000 --network=jenkins-sonarqube --restart=on-failure jenkins/jenkins:latest
 ```
 
-4. Use maven jenkins image: docker.io/jenkins/jnlp-agent-maven:jdk11
+4. Use maven jenkins image: maven:3.8.1-adoptopenjdk-11
 
 5. In the pipeline, run the following stage(example):
 ```groovy
