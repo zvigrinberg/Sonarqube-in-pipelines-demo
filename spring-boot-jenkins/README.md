@@ -26,14 +26,20 @@ podman run  --privileged -d --network host  -v /var/run/docker.sock:/var/run/doc
 
 6. In the pipeline, run the following stage(example):
 ```groovy
-     stage("build & SonarQube analysis") {
-          node {
-              withSonarQubeEnv('My SonarQube Server') {
-                 sh 'mvn clean package sonar:sonar'
-              }
-          }
+node {
+    stage("build & SonarQube analysis") {
+         withSonarQubeEnv('sonar-qube') {
+          docker.withTool('docker-test'){
+            docker.withServer('tcp://localhost:2375'){
+                 
+            docker.image('quay.io/zgrinber/maven:test3').inside('-v /var/run/docker.sock:/var/run/docker.sock'){       
+                 
+                     sh 'mvn clean package sonar:sonar'
+                  }
+           }
       }
-
+    }
+  }
       stage("Quality Gate"){
           timeout(time: 1, unit: 'HOURS') {
               def qg = waitForQualityGate()
@@ -42,5 +48,7 @@ podman run  --privileged -d --network host  -v /var/run/docker.sock:/var/run/doc
               }
           }
       }
+      
+}
       
 ```
