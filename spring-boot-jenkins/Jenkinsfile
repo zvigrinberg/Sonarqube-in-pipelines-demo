@@ -1,34 +1,37 @@
 node {
     stage("Checkout Git Repo")
-    {
-      checkout scm
-    }
+            {
+                checkout scm
+            }
 
     stage("build & SonarQube analysis") {
-         withSonarQubeEnv('sonar-qube') {
-          docker.withTool('docker-test'){
-            docker.withServer('tcp://my-docker:2376','docker-server-certs'){
-
-            docker.image('quay.io/zgrinber/maven:test3').inside{
-
-                sh 'mvn -f spring-boot-jenkins/pom.xml clean package sonar:sonar'
-                  }
-           }
-      }
+        withSonarQubeEnv('sonar-qube') {
+            docker.withTool('docker-test'){
+                docker.withServer('tcp://my-docker:2376','docker-server-certs'){
+                    // String sonar = ${env.SONAR_HOST_URL}
+                    // String ip = sonar.substring(sonar.lastIndexOf("/") + 1, sonar.indexOf(":"))
+                    // sh 'echo ${ip}'
+                    docker.image('maven:3.6.3-jdk-11-openj9').inside(' --network=bridge --user=root --privileged -v maven-repo:/root/.m2 -v /etc/hosts:/etc/hosts -e HOME=/root'){
+                        sh 'mvn -f spring-boot-jenkins/pom.xml clean package sonar:sonar'
+                        echo "Waiting 30 seconds before start waiting for quality gate"
+                        sleep 30
+                    }
+                }
+            }
+        }
     }
-  }
-      stage("Quality Gate"){
-          timeout(time: 1, unit: 'HOURS') {
-              def qg = waitForQualityGate()
-              if (qg.status != 'OK') {
-                  error "Pipeline aborted due to quality gate failure: ${qg.status}"
-              }
-          }
-      }
+    stage("Quality Gate"){
+        timeout(time: 1, unit: 'HOURS') {
+            def qg = waitForQualityGate()
+            if (qg.status != 'OK') {
+                error "Pipeline aborted due to quality gate failure: ${qg.status}"
+            }
+        }
+    }
     stage("Clean Workspace")
-       {
-          cleanWs()
+            {
+                cleanWs()
 
-       }
+            }
 
 }
