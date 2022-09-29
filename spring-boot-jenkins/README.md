@@ -11,8 +11,7 @@ podman network create jenkins-sonarqube
 podman run -d --network=jenkins-sonarqube --name sonarqube -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true -p 9000:9000 sonarqube:latest
 ```
 
-3. We'll use docker-pipeline plugin in Jenkins, in order to run agent with command inside whatever container we want, in order to achieve that , we need to make sure that filesystem type of jenkins container is the same as the file system of docker server container , the only way to guarantee it, is to create a shared volume on the host and mount it
-   both to jenkins container and docker server container
+3. We'll use docker-pipeline plugin in Jenkins, in order to run agent with command inside whatever container we want, in order to achieve that , we need to make sure that filesystem type of jenkins container is the same as the file system of docker server container, otherwise jenkins won't be able to mount workspace files into container, because file systems are incompatible , so the only 2 ways to guarantee it, is to run docker daemon in same jenkins master/agent, or to create a shared volume on the host and mount it both to jenkins container and docker server container, We'll use the first approach:
    
    1. Create new Volume on host 
    ```shell
@@ -36,11 +35,13 @@ podman run -d --network=jenkins-sonarqube --name sonarqube -e SONAR_ES_BOOTSTRAP
    ```
  
 4. Run jenkins instance on docker/podman:
-```shell
-  podman run -d -p 8080:8080 -p 50000:50000 --network=jenkins-sonarqube --env DOCKER_HOST=tcp://docker:2376 --env DOCKER_CERT_PATH=/certs/client --env DOCKER_TLS_VERIFY=1 --volume jenkins-data:/var/jenkins_home --volume jenkins-docker-certs:/certs/client:ro  --name jenkins-server --restart=on-failure jenkins/jenkins:latest
-```
-   a. For jenkins required Configuration, [follow this](./Jenkins-README.md) \
-   b. Build container image with latest maven version in it:
+  ```shell
+  podman run -d -p 8080:8080 -p 50000:50000 --network=jenkins-sonarqube --env DOCKER_HOST=tcp://docker:2376 --env DOCKER_CERT_PATH=/certs/client --env   DOCKER_TLS_VERIFY=1 --volume jenkins-data:/var/jenkins_home --volume jenkins-docker-certs:/certs/client:ro  --name jenkins-server --restart=on-failure  jenkins/jenkins:latest
+  ```
+   - For jenkins required Configuration, [follow this](./Jenkins-README.md) 
+   
+   - Build container image with latest maven version in it: 
+   
   ```shell
   podman build -t quay.io/youraccount/maven:tag . 
   podman login quay.io -u user
