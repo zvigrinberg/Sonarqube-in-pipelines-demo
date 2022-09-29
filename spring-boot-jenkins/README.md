@@ -1,6 +1,10 @@
-# Run Sonarqube Scanner with Jenkins Pipeline
+# Run Sonarqube Scanner with Jenkins Pipeline Using Docker Pipeline Plugin.
 
-## Pre-requisites:
+## Objectives
+  - To Provide a common generic way to run pipeline shell command in any container
+  - To run Sonarqube scanner in jenkins using a maven container, and a sonarqube plugin that integrates with a sonarqube server.
+
+## Procedure:
 
 1. Create network in podman/docker
 ```shell
@@ -65,8 +69,14 @@ podman run   --name docker-server  --detach   --privileged   --network jenkins-s
 [comment]: <> (podman run  --privileged -d --network host  -v /var/run/docker.sock:/var/run/docker.sock --name docker docker sleep infinity)
 
 [comment]: <> (```)
-
-7. Use maven jenkins image: maven:3.8.1-adoptopenjdk-11
+6. Transplant A DNS record in jenkins container that will be mapped to IP of docker server in network jenkins-sonarqube 
+   ```shell
+   ## get ip address of docker server in network jenkins-sonarqube 
+    export DOCKER_SERVER=$(podman inspect docker-server | jq '.[].NetworkSettings.Networks."jenkins-sonarqube".IPAddress' | awk -F \" '{print $2}')
+   ## transplant a dns record my-docker  for the ip of docker server in jenkins instance container
+    podman exec --privileged --user=root jenkins-server sed -i -c  '$ a '$DOCKER_SERVER'      my-docker' /etc/hosts
+   ```
+7. Use image containing maven - built from section 4
 
 8. In the pipeline, run the following stage(example):
 ```groovy
