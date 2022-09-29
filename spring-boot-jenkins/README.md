@@ -11,44 +11,88 @@ podman network create jenkins-sonarqube
 podman run -d --network=jenkins-sonarqube --name sonarqube -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true -p 9000:9000 sonarqube:latest
 ```
 
-3. Run jenkins instance on docker/podman:
+3. We'll use docker-pipeline plugin in Jenkins, in order to run agent with command inside whatever container we want, in order to achieve that , we need to make sure that filesystem type of jenkins container is the same as the file system of docker server container , the only way to guarantee it, is to create a shared volume on the host and mount it
+   both to jenkins container and docker server container
+   
+   1. Create new Volume on host 
+   ```shell
+    podman volume create jenkins-data
+   ```
+   2. If you are not root, open new user namespace as root
+   ```shell
+    podman unshare
+   ```
+   3. get the path of the shared volume on host by running the following command: 
+   ```shell
+    export shareDirectory=$(podman volume inspect jenkins-data | jq .[].Mountpoint)
+   ```
+   4. Give full permissions to directory for containers to be able to read,write the shared volume:
+   ```shell
+   chmod -R 777 $shareDirectory
+   ```
+   5. Exit from new user namespace
+   ```shell
+   exit
+   ```
+ 
+4. Run jenkins instance on docker/podman:
 ```shell
-podman run -d -p 8080:8080 -p 50000:50000 --network=jenkins-sonarqube --restart=on-failure jenkins/jenkins:latest
+  podman run -d -p 8080:8080 -p 50000:50000 --network=jenkins-sonarqube --env DOCKER_HOST=tcp://docker:2376 --env DOCKER_CERT_PATH=/certs/client --env DOCKER_TLS_VERIFY=1 --volume jenkins-data:/var/jenkins_home --volume jenkins-docker-certs:/certs/client:ro  --name jenkins-server --restart=on-failure jenkins/jenkins:latest
 ```
-4. Link podman socket to docker socket, and Mount the docker socket to new deployed container containing the docker executable
+   a. For jenkins required Configuration, [follow this](./Jenkins-README.md) \
+   b. Build container image with latest maven version in it:
+  ```shell
+  podman build -t quay.io/youraccount/maven:tag . 
+  podman login quay.io -u user
+  podman push quay.io/youraccount/maven:tag
+  ```
+
+
+5. Run Docker server instance on docker/podman:
 ```shell
-systemctl --user enable podman.socket  --now
-sudo ln -s /run/user/${UID}/podman/podman.sock /var/run/docker.sock
-podman run  --privileged -d --network host  -v /var/run/docker.sock:/var/run/docker.sock --name docker docker sleep infinity
+podman run   --name docker-server  --detach   --privileged   --network jenkins-sonarqube --hostname=my-docker  --network-alias docker   --env DOCKER_TLS_CERTDIR=/certs   --volume jenkins-docker-certs:/certs/client   --volume jenkins-data:/var/jenkins_home   --publish 2376:2376   docker:dind
 ```
 
-5. Use maven jenkins image: maven:3.8.1-adoptopenjdk-11
+[comment]: <> (6. Link podman socket to docker socket, and Mount the docker socket to new deployed container containing the docker executable)
 
-6. In the pipeline, run the following stage(example):
+[comment]: <> (```shell)
+
+[comment]: <> (systemctl --user enable podman.socket  --now)
+
+[comment]: <> (sudo ln -s /run/user/${UID}/podman/podman.sock /var/run/docker.sock)
+
+[comment]: <> (podman run  --privileged -d --network host  -v /var/run/docker.sock:/var/run/docker.sock --name docker docker sleep infinity)
+
+[comment]: <> (```)
+
+7. Use maven jenkins image: maven:3.8.1-adoptopenjdk-11
+
+8. In the pipeline, run the following stage(example):
 ```groovy
 node {
     stage("build & SonarQube analysis") {
-         withSonarQubeEnv('sonar-qube') {
-          docker.withTool('docker-test'){
-            docker.withServer('tcp://localhost:2375'){
-                 
-            docker.image('quay.io/zgrinber/maven:test3').inside('-v /var/run/docker.sock:/var/run/docker.sock'){       
-                 
-                     sh 'mvn clean package sonar:sonar'
-                  }
-           }
-      }
+        withSonarQubeEnv('sonar-qube') {
+            docker.withTool('docker-test'){
+                docker.withServer('tcp://my-docker:2376','docker-server-certs'){
+
+                    docker.image('quay.io/zgrinber/maven:test3').inside{
+
+                        sh 'mvn clean package sonar:sonar'
+                    }
+                }
+            }
+        }
     }
-  }
-      stage("Quality Gate"){
-          timeout(time: 1, unit: 'HOURS') {
-              def qg = waitForQualityGate()
-              if (qg.status != 'OK') {
-                  error "Pipeline aborted due to quality gate failure: ${qg.status}"
-              }
-          }
-      }
-      
+    stage("Quality Gate"){
+        timeout(time: 1, unit: 'HOURS') {
+            def qg = waitForQualityGate()
+            if (qg.status != 'OK') {
+                error "Pipeline aborted due to quality gate failure: ${qg.status}"
+            }
+        }
+    }
+
 }
+
       
 ```
