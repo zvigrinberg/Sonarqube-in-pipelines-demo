@@ -1,7 +1,7 @@
 # Run Sonarqube Scanner with Jenkins Pipeline Using Docker Pipeline Plugin.
 
 ## Objectives
-  - To Provide a common generic way to run pipeline shell command in any container
+  - To Provide a common generic way to run pipeline shell commands in any container
   - To run Sonarqube scanner in jenkins using a maven container, and a sonarqube plugin that integrates with a sonarqube server.
 
 ## Procedure:
