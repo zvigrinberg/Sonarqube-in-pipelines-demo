@@ -13,8 +13,8 @@ node {
                     // sh 'echo ${ip}'
                     docker.image('maven:3.6.3-jdk-11-openj9').inside(' --network=bridge --user=root --privileged -v maven-repo:/root/.m2 -v /etc/hosts:/etc/hosts -e HOME=/root'){
                         sh 'mvn -f spring-boot-jenkins/pom.xml clean package sonar:sonar'
-                        echo "Waiting 30 seconds before start waiting for quality gate"
-                        sleep 30
+                        echo "Waiting 10 seconds before start waiting for quality gate"
+                        sleep 10
                     }
                 }
             }
@@ -22,10 +22,10 @@ node {
     }
     stage("Quality Gate"){
         timeout(time: 1, unit: 'HOURS') {
-            def qg = waitForQualityGate()
-            if (qg.status != 'OK') {
-                error "Pipeline aborted due to quality gate failure: ${qg.status}"
-            }
+            waitForQualityGate abortPipeline: false
+            // if (qg.status != 'OK') {
+            //     error "Pipeline aborted due to quality gate failure: ${qg.status}"
+            // }
         }
     }
     stage("Clean Workspace")
