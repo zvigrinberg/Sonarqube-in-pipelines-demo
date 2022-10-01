@@ -1,4 +1,4 @@
-Xbox # Run Sonarqube Scanner with Jenkins Pipeline Using Docker Pipeline Plugin.
+# Run Sonarqube Scanner with Jenkins Pipeline Using Docker Pipeline Plugin.
 
 ## Objectives
   - To Provide a common generic way to run pipeline shell commands in any container
