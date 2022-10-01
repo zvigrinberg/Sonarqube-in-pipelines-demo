@@ -1,4 +1,4 @@
-# Run Sonarqube Scanner with Jenkins Pipeline Using Docker Pipeline Plugin.
+Xbox # Run Sonarqube Scanner with Jenkins Pipeline Using Docker Pipeline Plugin.
 
 ## Objectives
   - To Provide a common generic way to run pipeline shell commands in any container
@@ -14,7 +14,8 @@ podman network create jenkins-sonarqube
 ```shell
 podman run -d --network=jenkins-sonarqube --name sonarqube -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true -p 9000:9000 sonarqube:latest
 ```
-
+*__Note: Sonarqube uses elasticsearch as internal DB, and ES in turn requires that the host will have at least 10 percent of free disk space as it need that as working space, otherwise sonarqube Might fail everytime on projects scans.__* \
+ \
 3. We'll use docker-pipeline plugin in Jenkins, in order to run agent with command inside whatever container we want, in order to achieve that , we need to make sure that filesystem type of jenkins container is the same as the file system of docker server container, otherwise jenkins won't be able to mount workspace files into container, because file systems are incompatible , so the only 2 ways to guarantee it, is to run docker daemon in same jenkins master/agent, or to create a shared volume on the host and mount it both to jenkins container and docker server container, We'll use the first approach:
    
    1. Create new Volume on host 
