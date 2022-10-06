@@ -14,6 +14,9 @@ podman network create jenkins-sonarqube
 ```shell
 podman run -d --network=jenkins-sonarqube --name sonarqube -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true -p 9000:9000 sonarqube:latest
 ```
+  - After server is up, Define an access token(User token) Go to User -> My Account -> Security and generate token, copy it(important!, because once generated and saved, it won't be shown again , afterwards add/paste it as a secret text at Jenkins credentials
+  - Configure a webhook in your SonarQube server pointing to jenkins-address/sonarqube-webhook/
+    
 *__Note: Sonarqube uses elasticsearch as internal DB, and ES in turn requires that the host will have at least 10 percent of free disk space as it need that as working space, otherwise sonarqube Might fail everytime on projects scans.__* \
  \
 3. We'll use docker-pipeline plugin in Jenkins, in order to run agent with command inside whatever container we want, in order to achieve that , we need to make sure that filesystem type of jenkins container is the same as the file system of docker server container, otherwise jenkins won't be able to mount workspace files into container, because file systems are incompatible , so the only 2 ways to guarantee it, is to run docker daemon in same jenkins master/agent, or to create a shared volume on the host and mount it both to jenkins container and docker server container, We'll use the first approach:
