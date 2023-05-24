@@ -59,7 +59,12 @@ podman run   --name docker-server  --detach   --privileged   --network jenkins-s
 [comment]: <> (podman run  --privileged -d --network host  -v /var/run/docker.sock:/var/run/docker.sock --name docker docker sleep infinity)
 
 [comment]: <> (```)
-5. Transplant A DNS record in jenkins container that will be mapped to IP's of docker server and sonarqube server in network jenkins-sonarqube 
+5. Run jenkins instance on docker/podman:
+  ```shell
+  podman run -d -p 8080:8080 -p 50000:50000 --network=jenkins-sonarqube --env DOCKER_HOST=tcp://docker:2376 --env DOCKER_CERT_PATH=/certs/client --env   DOCKER_TLS_VERIFY=1 --volume jenkins-data:/var/jenkins_home --volume jenkins-docker-certs:/certs/client:ro --add-host my-docker:$DOCKER_SERVER --add-host sonarqube:$SONARQUBE_SERVER --name jenkins-server --restart=on-failure  jenkins/jenkins:latest
+  ```
+   - For jenkins required Configuration, [follow this](./Jenkins-README.md)    
+6. Transplant A DNS record in jenkins container that will be mapped to IP's of docker server and sonarqube server in network jenkins-sonarqube 
    ```shell
    ## get ips address of docker server and sonarqube server in network jenkins-sonarqube 
     export DOCKER_SERVER=$(podman inspect docker-server | jq '.[].NetworkSettings.Networks."jenkins-sonarqube".IPAddress' | awk -F \" '{print $2}')
@@ -67,11 +72,6 @@ podman run   --name docker-server  --detach   --privileged   --network jenkins-s
    ## transplant a dns record my-docker  for the ip of docker server in jenkins instance container - better to do with --add-host when will run the jenkins container
     podman exec --privileged --user=root jenkins-server sed -i -c  '$ a '$DOCKER_SERVER'      my-docker' /etc/hosts
    ```
-6. Run jenkins instance on docker/podman:
-  ```shell
-  podman run -d -p 8080:8080 -p 50000:50000 --network=jenkins-sonarqube --env DOCKER_HOST=tcp://docker:2376 --env DOCKER_CERT_PATH=/certs/client --env   DOCKER_TLS_VERIFY=1 --volume jenkins-data:/var/jenkins_home --volume jenkins-docker-certs:/certs/client:ro --add-host my-docker:$DOCKER_SERVER --add-host sonarqube:$SONARQUBE_SERVER --name jenkins-server --restart=on-failure  jenkins/jenkins:latest
-  ```
-   - For jenkins required Configuration, [follow this](./Jenkins-README.md)    
 7. Use image containing maven - built from section 4
 
 8. In the pipeline, run the following stage(example):
