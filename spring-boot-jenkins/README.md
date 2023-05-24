@@ -47,18 +47,18 @@ podman run -d --network=jenkins-sonarqube --name sonarqube -e SONAR_ES_BOOTSTRAP
 ```shell
 podman run   --name docker-server  --detach   --privileged   --network jenkins-sonarqube --hostname=my-docker  --network-alias docker   --env DOCKER_TLS_CERTDIR=/certs   --volume jenkins-docker-certs:/certs/client   --volume jenkins-data:/var/jenkins_home   --publish 2376:2376   docker:dind
 ```
+### Mounting Docker DIND Socket to Local Podman Socket
+ If you want to see all activity of containers in DIND via local podman, you need to enable podman socket,  then you need to map dind(docker in docker) socket to podman socket, by Mounting the podman socket to the local docker socket, and then mount the local docker socket to container docker socket, so the podman run command should be changed as follows, after invoking two commands to activate podman socket and create soft link to docker socket from podman socket: 
 
-[comment]: <> (6. Link podman socket to docker socket, and Mount the docker socket to new deployed container containing the docker executable)
+```shell
 
-[comment]: <> (```shell)
+systemctl --user enable podman.socket  --now
 
-[comment]: <> (systemctl --user enable podman.socket  --now)
+sudo ln -s /run/user/${UID}/podman/podman.sock /var/run/docker.sock
 
-[comment]: <> (sudo ln -s /run/user/${UID}/podman/podman.sock /var/run/docker.sock)
+podman run  --privileged -d --network host  -v /var/run/docker.sock:/var/run/docker.sock --name docker docker sleep infinity
 
-[comment]: <> (podman run  --privileged -d --network host  -v /var/run/docker.sock:/var/run/docker.sock --name docker docker sleep infinity)
-
-[comment]: <> (```)
+```
 5. Run jenkins instance on docker/podman:
   ```shell
   podman run -d -p 8080:8080 -p 50000:50000 --network=jenkins-sonarqube --env DOCKER_HOST=tcp://docker:2376 --env DOCKER_CERT_PATH=/certs/client --env   DOCKER_TLS_VERIFY=1 --volume jenkins-data:/var/jenkins_home --volume jenkins-docker-certs:/certs/client:ro --add-host my-docker:$DOCKER_SERVER --add-host sonarqube:$SONARQUBE_SERVER --name jenkins-server --restart=on-failure  jenkins/jenkins:latest
